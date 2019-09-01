@@ -1,5 +1,5 @@
 {
-    "name": "liftmode/magento2-convertkit",
+    "name": "liftmode/convertkit",
     "description": "Pass Newsletter subscribers to convertKit, Email Marketing Platform",
     "version": "0.0.1",
     "require": {
