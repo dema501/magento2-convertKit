@@ -74,7 +74,7 @@ class SubscribedToNewsletter implements ObserverInterface {
                 $_params
             );
 
-            $this->_logger->debug(json_encode(array("action" => "subscribe", "params" => $_params, "resp" => $_resp)));
+            // $this->_logger->debug(json_encode(array("action" => "subscribe", "params" => $_params, "resp" => $_resp)));
         }
         elseif (!empty($api_secret) && $_data['subscriber_status'] === \Magento\Newsletter\Model\Subscriber::STATUS_UNSUBSCRIBED) {
             $_params = array(
@@ -82,12 +82,13 @@ class SubscribedToNewsletter implements ObserverInterface {
                 'api_secret'   => $this->_encryptor->decrypt($api_secret),
             );
 
-            $this->_curl->put(
+            $this->_curl>makeRequest(
+                "PUT",
                 'https://api.convertkit.com/v3/unsubscribe',
                 $_params
             );
 
-            $this->_logger->debug(json_encode(array("action" => "unsubscribe", "params" => $_params, "resp" => $_resp)));
+            // $this->_logger->debug(json_encode(array("action" => "unsubscribe", "params" => $_params, "resp" => $_resp)));
         }
 
         return $this;
