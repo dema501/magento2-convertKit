@@ -87,7 +87,7 @@ class SubscribedToNewsletter implements ObserverInterface {
                 'api_secret'   => $this->_encryptor->decrypt($api_secret),
             );
 
-            $this->_curl>makeRequest(
+            $this->_curl->makeRequest(
                 "PUT",
                 'https://api.convertkit.com/v3/unsubscribe',
                 $_params
