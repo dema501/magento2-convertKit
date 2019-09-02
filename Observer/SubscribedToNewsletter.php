@@ -44,38 +44,42 @@ class SubscribedToNewsletter implements ObserverInterface {
         $_data         = $_subscriber->getData();
         $_statusChange = $_subscriber->isStatusChanged();
 
+        $api_key    = $this->_scopeConfig->getValue(self::RC_API_KEY);
+        $api_secret = $this->_scopeConfig->getValue(self::RC_API_SECRET);
+
         // Trigger if user is now subscribed and there has been a status change:
-        if ($_data['subscriber_status'] == \Magento\Newsletter\Model\Subscriber::STATUS_SUBSCRIBED && $_statusChange == true) {
+        if (!empty($api_key) && $_data['subscriber_status'] == \Magento\Newsletter\Model\Subscriber::STATUS_SUBSCRIBED && $_statusChange == true) {
+            $_data['subscriber_firstname'] = "";
 
-            if ($this->_scopeConfig->getValue(self::RC_API_KEY)) {
-                if (empty($_data['subscriber_firstname'])) {
-                    $_customerId = $_subscriber['customer_id'];
+            if (!empty($_data['customer_id']) && $_data['customer_id'] > 0) {
+                $_customerId = $_data['customer_id'];
 
-                    if($_customerId) {
-                        $_customer = $this->customerRegistry->retrieve($_customerId);
-                        $_data['subscriber_firstname'] = $_customer->getName();
-                    }
+                if($_customerId) {
+                    $_customer = $this->customerRegistry->retrieve($_customerId);
+                    $_data['subscriber_firstname'] = $_customer->getName();
                 }
-
-                $_params = array(
-                    'email'        => $_data['subscriber_email'],
-                    'first_name'   => $_data['subscriber_firstname'],
-                    'api_key'      => $this->_encryptor->decrypt($this->_scopeConfig->getValue(self::RC_API_KEY)),
-                    'tags'         => $this->_scopeConfig->getValue(self::RC_TAGS),
-                );
-
-                $_resp = $this->_curl->post(
-                    sprintf('https://api.convertkit.com/v3/forms/%s/subscribe', $this->_scopeConfig->getValue(self::RC_FORM_ID)),
-                    $_params
-                );
-
-                $this->_logger->debug(json_encode(array("action" => "subscribe", "params" => $_params, "resp" => $_resp)));
             }
-        }
-        elseif ($_data['subscriber_status'] === \Magento\Newsletter\Model\Subscriber::STATUS_UNSUBSCRIBED) {
+
+            $this->_logger->debug(json_encode($_data));
+
             $_params = array(
                 'email'        => $_data['subscriber_email'],
-                'api_secret'   => $this->_encryptor->decrypt($this->_scopeConfig->getValue(self::RC_API_KEY)),
+                'first_name'   => $_data['subscriber_firstname'],
+                'api_key'      => $this->_encryptor->decrypt($api_key),
+                'tags'         => $this->_scopeConfig->getValue(self::RC_TAGS),
+            );
+
+            $_resp = $this->_curl->post(
+                sprintf('https://api.convertkit.com/v3/forms/%s/subscribe', $this->_scopeConfig->getValue(self::RC_FORM_ID)),
+                $_params
+            );
+
+            $this->_logger->debug(json_encode(array("action" => "subscribe", "params" => $_params, "resp" => $_resp)));
+        }
+        elseif (!empty($api_secret) && $_data['subscriber_status'] === \Magento\Newsletter\Model\Subscriber::STATUS_UNSUBSCRIBED) {
+            $_params = array(
+                'email'        => $_data['subscriber_email'],
+                'api_secret'   => $this->_encryptor->decrypt($api_secret),
             );
 
             $this->_curl->put(
