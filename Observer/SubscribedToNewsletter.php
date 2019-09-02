@@ -3,6 +3,7 @@
 namespace Liftmode\ConvertKit\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
+
 class SubscribedToNewsletter implements ObserverInterface {
     public const RC_MODULE_ENABLED    = 'newsletter/convertkit/is_enabled';
     public const RC_API_KEY          = 'newsletter/convertkit/api_key';
@@ -28,11 +29,11 @@ class SubscribedToNewsletter implements ObserverInterface {
         \Psr\Log\LoggerInterface $logger,
         \Magento\Framework\Encryption\EncryptorInterface $encryptor
     ) {
-        $this->_scopeConfig     = $scopeConfig;
-        $this->_curl            = $curl;
-        $this->customerRegistry = $customerRegistry;
-        $this->_logger          = $logger;
-        $this->_encryptor       = $encryptor;
+        $this->_scopeConfig      = $scopeConfig;
+        $this->_curl             = $curl;
+        $this->_customerRegistry = $customerRegistry;
+        $this->_logger           = $logger;
+        $this->_encryptor        = $encryptor;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer) {
@@ -49,14 +50,16 @@ class SubscribedToNewsletter implements ObserverInterface {
 
         // Trigger if user is now subscribed and there has been a status change:
         if (!empty($api_key) && $_data['subscriber_status'] == \Magento\Newsletter\Model\Subscriber::STATUS_SUBSCRIBED && $_statusChange == true) {
-            $_data['subscriber_firstname'] = "";
+            if (!array_key_exists('subscriber_firstname', $_data) || empty($_data['subscriber_firstname'])) {
+                $_data['subscriber_firstname'] = "";
 
-            if (!empty($_data['customer_id']) && $_data['customer_id'] > 0) {
-                $_customerId = $_data['customer_id'];
+                if (!empty($_data['customer_id']) && $_data['customer_id'] > 0) {
+                    $_customerId = $_data['customer_id'];
 
-                if($_customerId) {
-                    $_customer = $this->customerRegistry->retrieve($_customerId);
-                    $_data['subscriber_firstname'] = $_customer->getName();
+                    if($_customerId) {
+                        $_customer = $this->_customerRegistry->retrieve($_customerId);
+                        $_data['subscriber_firstname'] = $_customer->getFirstName();
+                    }
                 }
             }
 
@@ -67,6 +70,7 @@ class SubscribedToNewsletter implements ObserverInterface {
                 'tags'         => $this->_scopeConfig->getValue(self::RC_TAGS),
             );
 
+            //\Magento\Framework\HTTP\Client\Curl do work for me
             $this->_curl->post(
                 sprintf('https://api.convertkit.com/v3/forms/%s/subscribe', $this->_scopeConfig->getValue(self::RC_FORM_ID)),
                 $_params
@@ -87,10 +91,17 @@ class SubscribedToNewsletter implements ObserverInterface {
                 'api_secret'   => $this->_encryptor->decrypt($api_secret),
             );
 
-            $this->_curl->makeRequest(
-                "PUT",
-                'https://api.convertkit.com/v3/unsubscribe',
-                $_params
+            $_paramsJson = json_encode($_params);
+
+            //Custom options to make put request
+            $this->_curl->setOption(CURLOPT_HTTPGET, 0);
+            $this->_curl->setOption(CURLOPT_CUSTOMREQUEST, "PUT");
+            $this->_curl->setOption(CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($_paramsJson)));
+            $this->_curl->setOption(CURLOPT_POSTFIELDS, $_paramsJson);
+
+            // Initiate sending, custom options will convert GET to PUT inside
+            $this->_curl->get(
+                'https://api.convertkit.com/v3/unsubscribe'
             );
 
             if ($this->_scopeConfig->getValue(self::RC_MODULE_DEBUG_ENABLED)) {
