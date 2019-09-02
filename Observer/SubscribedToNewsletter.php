@@ -4,7 +4,7 @@ namespace Liftmode\ConvertKit\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
 class SubscribedToNewsletter implements ObserverInterface {
-    const RC_MODULE_ENABLE    = 'newsletter/convertkit/enable';
+    const RC_MODULE_ENABLE    = 'newsletter/convertkit/is_enabled';
     const RC_API_KEY          = 'newsletter/convertkit/api_key';
     const RC_API_SECRET       = 'newsletter/convertkit/api_secret';
     const RC_FORM_ID          = 'newsletter/convertkit/form_id';
