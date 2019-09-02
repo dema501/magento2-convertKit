@@ -4,18 +4,17 @@ namespace Liftmode\ConvertKit\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
 class SubscribedToNewsletter implements ObserverInterface {
-    const RC_MODULE_ENABLE    = 'newsletter/convertkit/is_enabled';
-    const RC_API_KEY          = 'newsletter/convertkit/api_key';
-    const RC_API_SECRET       = 'newsletter/convertkit/api_secret';
-    const RC_FORM_ID          = 'newsletter/convertkit/form_id';
-    const RC_TAGS             = 'newsletter/convertkit/tags';
+    public const RC_MODULE_ENABLE    = 'newsletter/convertkit/is_enabled';
+    public const RC_API_KEY          = 'newsletter/convertkit/api_key';
+    public const RC_API_SECRET       = 'newsletter/convertkit/api_secret';
+    public const RC_FORM_ID          = 'newsletter/convertkit/form_id';
+    public const RC_TAGS             = 'newsletter/convertkit/tags';
 
-
-    protected $_scopeConfig;
-    protected $_customerRegistry;
-    protected $_curl;
-    protected $_logger;
-
+    private   $_scopeConfig;
+    private   $_customerRegistry;
+    private   $_curl;
+    private   $_logger;
+    private   $_encryptor;
 
     /**
      * @param \Ecomail\Ecomail\Helper\Data             $helper
@@ -25,12 +24,14 @@ class SubscribedToNewsletter implements ObserverInterface {
         \Magento\Framework\HTTP\Client\Curl $curl,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Customer\Model\CustomerRegistry $customerRegistry,
-        \Psr\Log\LoggerInterface $logger
+        \Psr\Log\LoggerInterface $logger,
+        \Magento\Framework\Encryption\EncryptorInterface $encryptor
     ) {
         $this->_scopeConfig     = $scopeConfig;
         $this->_curl            = $curl;
         $this->customerRegistry = $customerRegistry;
         $this->_logger          = $logger;
+        $this->_encryptor       = $encryptor;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer) {
@@ -59,7 +60,7 @@ class SubscribedToNewsletter implements ObserverInterface {
                 $_params = array(
                     'email'        => $_data['subscriber_email'],
                     'first_name'   => $_data['subscriber_firstname'],
-                    'api_key'      => $this->_scopeConfig->getValue(self::RC_API_KEY),
+                    'api_key'      => $this->_encryptor->decrypt($this->_scopeConfig->getValue(self::RC_API_KEY)),
                     'tags'         => $this->_scopeConfig->getValue(self::RC_TAGS),
                 );
 
@@ -74,7 +75,7 @@ class SubscribedToNewsletter implements ObserverInterface {
         elseif ($_data['subscriber_status'] === \Magento\Newsletter\Model\Subscriber::STATUS_UNSUBSCRIBED) {
             $_params = array(
                 'email'        => $_data['subscriber_email'],
-                'api_secret'   => $this->_scopeConfig->getValue(self::RC_API_KEY),
+                'api_secret'   => $this->_encryptor->decrypt($this->_scopeConfig->getValue(self::RC_API_KEY)),
             );
 
             $this->_curl->put(
